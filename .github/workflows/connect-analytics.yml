@@ -1,0 +1,41 @@
+name: Connect FixTechBro Analytics
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  inject-analytics:
+    if: ${{ !contains(github.event.head_commit.message, '[skip actions]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Inject analytics script
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('index.html')
+          html = path.read_text(encoding='utf-8')
+          marker = '<script src="/fixtechbro-analytics.js"></script>'
+          if marker not in html:
+              html = html.replace('</body>', marker + '\n</body>', 1)
+              path.write_text(html, encoding='utf-8')
+          PY
+
+      - name: Commit analytics connection
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "Analytics already connected."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Connect Supabase website analytics [skip actions]"
+          git push
