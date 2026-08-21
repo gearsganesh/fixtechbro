@@ -56,5 +56,6 @@ const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.targe
 document.getElementById('enquiryForm').addEventListener('submit',e=>{e.preventDefault();const v=id=>document.getElementById(id).value.trim();const msg=`*New FixTechBro Enquiry*\n\n*Name:* ${v('name')}\n*Phone:* ${v('phone')}\n*Service:* ${v('service')}\n*Preferred Date:* ${v('date')||'Not specified'}\n*Location:* ${v('location')||'Not specified'}\n*Requirement:* ${v('message')||'Not specified'}`;window.open('https://wa.me/919710244720?text='+encodeURIComponent(msg),'_blank')});
 </script>
 <script src="./fixtechbro-analytics.js"></script>
+<script src="/fixtechbro-analytics.js"></script>
 </body>
 </html>
