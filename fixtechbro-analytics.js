@@ -2,6 +2,7 @@
   const SUPABASE_URL = 'https://socglsgkdivewhvohlrh.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_vHq2kkVTOSVLr7qFdhBasQ_EWQyEOVX';
   const VISIT_SESSION_KEY = 'fixtechbro_visit_recorded_v1';
+  const ENQUIRY_API = '/api/send-enquiry';
 
   const api = async (fn, body) => {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
@@ -35,7 +36,15 @@
       .ftb-live-intro{padding:8px}.ftb-live-kicker{color:#ffc928;font-size:.64rem;letter-spacing:1.5px;text-transform:uppercase}.ftb-live-title{font-family:'Space Grotesk',Inter,sans-serif;font-size:clamp(1.35rem,2.4vw,2rem);font-weight:600;line-height:1;margin:6px 0}.ftb-live-copy{color:#9fb0c2;font-size:.76rem;max-width:390px}
       .ftb-live-card{border:1px solid rgba(255,255,255,.1);background:#0d2137;border-radius:14px;padding:18px;position:relative;overflow:hidden}.ftb-live-card:after{content:"";position:absolute;right:-30px;top:-35px;width:90px;height:90px;border-radius:50%;background:rgba(255,201,40,.07)}
       .ftb-live-number{font-family:'Space Grotesk',Inter,sans-serif;font-size:clamp(1.9rem,3.4vw,2.7rem);font-weight:700;letter-spacing:-1px;color:#ffc928;line-height:1}.ftb-live-label{display:block;margin-top:6px;font-size:.68rem;color:#d5dfeb;text-transform:uppercase;letter-spacing:.8px}.ftb-live-status{font-size:.59rem;color:#8fa2b6;margin-top:6px}.ftb-live-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#38d39f;margin-right:5px;box-shadow:0 0 0 4px rgba(56,211,159,.08)}
-      @media(max-width:760px){.ftb-live-inner{grid-template-columns:1fr 1fr}.ftb-live-intro{grid-column:1/-1}.ftb-live-card{padding:16px}}
+      .ftb-contact-email-note{color:#657487;font-size:.72rem;margin-top:12px;line-height:1.55}
+      .ftb-contact-email-note a{color:#0a1725;text-decoration:underline;text-decoration-color:#ffc928;text-underline-offset:3px}
+      .ftb-form-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:2px}
+      .ftb-form-actions .btn{width:100%;margin:0}
+      .ftb-email-btn{background:#fff!important;color:#0a1725!important;border:1px solid #d6dde5!important}
+      .ftb-email-btn:hover{border-color:#ffc928!important}
+      .ftb-email-status{font-size:.72rem;color:#4d6174;margin-top:2px;display:none}
+      .ftb-email-status.show{display:block}
+      @media(max-width:760px){.ftb-live-inner{grid-template-columns:1fr 1fr}.ftb-live-intro{grid-column:1/-1}.ftb-live-card{padding:16px}.ftb-form-actions{grid-template-columns:1fr}}
       @media(max-width:450px){.ftb-live-inner{grid-template-columns:1fr}.ftb-live-intro{grid-column:auto}}
     `;
     document.head.appendChild(style);
@@ -89,23 +98,102 @@
     } catch (error) { console.warn('FixTechBro analytics:', error.message); }
   };
 
+  const getFormPayload = form => {
+    const value = key => { const el = form.querySelector(`[name="${key}"], #${key}`); return el ? el.value.trim() : ''; };
+    return {
+      name: value('name') || value('fullName') || value('fullname'),
+      phone: value('phone') || value('mobile') || value('contact'),
+      service: value('service') || value('serviceType'),
+      preferred_date: value('date') || value('preferred_date') || null,
+      location: value('location') || 'Perambur, Chennai',
+      message: value('message') || value('requirement') || value('details')
+    };
+  };
+
+  const sendEnquiryByEmail = async form => {
+    const status = form.querySelector('.ftb-email-status');
+    const button = form.querySelector('.ftb-email-btn');
+    const payload = getFormPayload(form);
+    if (!payload.name || !payload.phone || !payload.service) {
+      form.reportValidity();
+      return;
+    }
+
+    try {
+      if (button) { button.disabled = true; button.textContent = 'SENDING…'; }
+      if (status) { status.textContent = 'Sending enquiry to Sachin and Ganesh…'; status.classList.add('show'); }
+
+      const response = await fetch(ENQUIRY_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        keepalive: true
+      });
+      if (!response.ok) throw new Error(`Enquiry endpoint failed: ${response.status}`);
+      const result = await response.json();
+      showStats(result.stats);
+      if (status) { status.textContent = '✓ Enquiry sent to sachin@fixtechbro.com and ganesh@fixtechbro.com'; }
+      if (button) { button.textContent = 'EMAIL SENT ✓'; }
+    } catch (error) {
+      console.warn('FixTechBro email enquiry:', error.message);
+      if (status) { status.textContent = 'Could not send the email right now. Please try again.'; }
+      if (button) { button.disabled = false; button.textContent = 'SEND VIA EMAIL →'; }
+    }
+  };
+
+  const setupContactDetails = () => {
+    if (document.querySelector('.ftb-contact-email-note')) return;
+    const card = document.querySelector('.contact-card');
+    if (!card) return;
+    const serviceRow = Array.from(card.querySelectorAll('.contact-row')).find(row => row.textContent.includes('Service'));
+    const block = document.createElement('div');
+    block.className = 'ftb-contact-email-note';
+    block.innerHTML = 'Email enquiries: <a href="mailto:sachin@fixtechbro.com">sachin@fixtechbro.com</a> · <a href="mailto:ganesh@fixtechbro.com">ganesh@fixtechbro.com</a>';
+    if (serviceRow) serviceRow.after(block); else card.appendChild(block);
+  };
+
+  const setupFormButtons = () => {
+    const form = document.querySelector('#enquiryForm, form');
+    if (!form || form.dataset.ftbEmailButtonsBound === '1') return;
+    form.dataset.ftbEmailButtonsBound = '1';
+
+    const submit = form.querySelector('button.submit');
+    if (submit) submit.textContent = 'SEND VIA WHATSAPP →';
+
+    const actions = document.createElement('div');
+    actions.className = 'ftb-form-actions';
+    if (submit) {
+      submit.parentNode.insertBefore(actions, submit);
+      actions.appendChild(submit);
+    } else {
+      form.appendChild(actions);
+    }
+
+    const emailButton = document.createElement('button');
+    emailButton.type = 'button';
+    emailButton.className = 'btn ftb-email-btn';
+    emailButton.textContent = 'SEND VIA EMAIL →';
+    actions.appendChild(emailButton);
+
+    const status = document.createElement('div');
+    status.className = 'ftb-email-status';
+    actions.after(status);
+
+    emailButton.addEventListener('click', () => sendEnquiryByEmail(form));
+
+    const intro = document.querySelector('#contact .section-head p');
+    if (intro) intro.textContent = 'Submit the details and send your enquiry by WhatsApp or email.';
+  };
+
   const captureEnquiry = () => {
     const form = document.querySelector('#enquiryForm, form');
     if (!form || form.dataset.ftbAnalyticsBound === '1') return;
     form.dataset.ftbAnalyticsBound = '1';
-    const value = key => { const el = form.querySelector(`[name="${key}"], #${key}`); return el ? el.value.trim() : ''; };
     form.addEventListener('submit', async () => {
       try {
-        const payload = {
-          name: value('name') || value('fullName') || value('fullname'),
-          phone: value('phone') || value('mobile') || value('contact'),
-          service: value('service') || value('serviceType'),
-          preferred_date: value('date') || value('preferred_date') || null,
-          location: value('location') || 'Perambur, Chennai',
-          message: value('message') || value('requirement') || value('details')
-        };
+        const payload = getFormPayload(form);
         if (!payload.name || !payload.phone || !payload.service) return;
-        const response = await fetch('/api/send-enquiry', {
+        const response = await fetch(ENQUIRY_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -118,6 +206,14 @@
     });
   };
 
-  const init = () => { addStyles(); createStats(); recordVisit(); captureEnquiry(); };
+  const init = () => {
+    addStyles();
+    createStats();
+    setupContactDetails();
+    setupFormButtons();
+    recordVisit();
+    captureEnquiry();
+  };
+
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
