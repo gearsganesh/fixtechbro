@@ -36,8 +36,7 @@ module.exports = async (req, res) => {
     });
 
     if (!dbResponse.ok) {
-      const detail = await dbResponse.text();
-      console.error('Supabase enquiry error:', detail);
+      console.error('Supabase enquiry error:', await dbResponse.text());
       return json(res, 502, { error: 'Could not save enquiry' });
     }
 
@@ -67,14 +66,12 @@ module.exports = async (req, res) => {
         from: FROM_EMAIL,
         to: ['sachin@fixtechbro.com', 'ganesh@fixtechbro.com'],
         subject: `New FixTechBro Enquiry - ${enquiry.p_service}`,
-        text,
-        reply_to: enquiry.p_phone.includes('@') ? enquiry.p_phone : undefined
+        text
       })
     });
 
     if (!emailResponse.ok) {
-      const detail = await emailResponse.text();
-      console.error('Resend error:', detail);
+      console.error('Resend error:', await emailResponse.text());
       return json(res, 502, { error: 'Enquiry saved, but email notification failed' });
     }
 
