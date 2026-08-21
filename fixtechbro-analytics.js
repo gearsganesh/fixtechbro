@@ -23,16 +23,13 @@
     const style = document.createElement('style');
     style.id = 'ftb-analytics-style';
     style.textContent = `
-      /* FixTechBro typography system */
-      body{font-family:'Inter',system-ui,sans-serif!important;font-weight:400!important;}
-      body p,body li,body input,body select,body textarea{font-family:'Inter',system-ui,sans-serif!important;font-weight:400!important;}
-      h1,h2,h3,h4,h5,h6,.brand,.navcta,.btn,.service-body h3,.contact-card h2,.form-card h3,.platform-copy h2,.business h2,.section-head h2{font-family:'Space Grotesk',Inter,sans-serif!important;font-weight:600!important;}
-      .hero h1{font-weight:700!important;}
-      .navlinks{font-family:'Inter',system-ui,sans-serif!important;font-weight:500!important;}
-      label,.eyebrow,.service-no,.service-link,.ticker span,.hero-proof b,.hero-badge,.stamp,.contact-row span,.ftb-live-kicker,.ftb-live-label,.ftb-live-status{font-family:'DM Mono',monospace!important;font-weight:500!important;}
-      .brand small{font-family:'DM Mono',monospace!important;font-weight:400!important;}
-      .contact-row b,.contact-row a{font-family:'Inter',system-ui,sans-serif!important;font-weight:600!important;}
-      .hero-copy,.section-head p,.platform-copy>p,.business>div>p,.service-body p,.process-card p,.platform-item span,.business-point span,.contact-card>p{font-weight:400!important;}
+      body{font-family:'Inter',system-ui,sans-serif!important;font-weight:400!important}
+      body p,body li,body input,body select,body textarea{font-family:'Inter',system-ui,sans-serif!important;font-weight:400!important}
+      h1,h2,h3,h4,h5,h6,.brand,.navcta,.btn,.service-body h3,.contact-card h2,.form-card h3,.platform-copy h2,.business h2,.section-head h2{font-family:'Space Grotesk',Inter,sans-serif!important;font-weight:600!important}
+      .hero h1{font-weight:700!important}.navlinks{font-family:'Inter',system-ui,sans-serif!important;font-weight:500!important}
+      label,.eyebrow,.service-no,.service-link,.ticker span,.hero-proof b,.hero-badge,.stamp,.contact-row span,.ftb-live-kicker,.ftb-live-label,.ftb-live-status{font-family:'DM Mono',monospace!important;font-weight:500!important}
+      .brand small{font-family:'DM Mono',monospace!important;font-weight:400!important}.contact-row b,.contact-row a{font-family:'Inter',system-ui,sans-serif!important;font-weight:600!important}
+      .hero-copy,.section-head p,.platform-copy>p,.business>div>p,.service-body p,.process-card p,.platform-item span,.business-point span,.contact-card>p{font-weight:400!important}
       .ftb-live-stats{background:#06111f;color:#f7f9fc;border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);padding:26px 0}
       .ftb-live-inner{width:min(1240px,92%);margin:auto;display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:14px;align-items:stretch}
       .ftb-live-intro{padding:8px}.ftb-live-kicker{color:#ffc928;font-size:.64rem;letter-spacing:1.5px;text-transform:uppercase}.ftb-live-title{font-family:'Space Grotesk',Inter,sans-serif;font-size:clamp(1.35rem,2.4vw,2rem);font-weight:600;line-height:1;margin:6px 0}.ftb-live-copy{color:#9fb0c2;font-size:.76rem;max-width:390px}
@@ -57,9 +54,7 @@
       </div>`;
     const header = document.querySelector('header');
     const hero = document.querySelector('.hero');
-    if (header) header.after(section);
-    else if (hero) hero.before(section);
-    else document.querySelector('main')?.prepend(section);
+    if (header) header.after(section); else if (hero) hero.before(section); else document.querySelector('main')?.prepend(section);
   };
 
   const animateNumber = (element, target) => {
@@ -98,23 +93,28 @@
     const form = document.querySelector('#enquiryForm, form');
     if (!form || form.dataset.ftbAnalyticsBound === '1') return;
     form.dataset.ftbAnalyticsBound = '1';
-    const value = key => {
-      const el = form.querySelector(`[name="${key}"], #${key}`);
-      return el ? el.value.trim() : '';
-    };
+    const value = key => { const el = form.querySelector(`[name="${key}"], #${key}`); return el ? el.value.trim() : ''; };
     form.addEventListener('submit', async () => {
       try {
         const payload = {
-          p_name: value('name') || value('fullName') || value('fullname'),
-          p_phone: value('phone') || value('mobile') || value('contact'),
-          p_service: value('service') || value('serviceType'),
-          p_preferred_date: value('date') || value('preferred_date') || null,
-          p_location: value('location') || 'Perambur, Chennai',
-          p_message: value('message') || value('requirement') || value('details')
+          name: value('name') || value('fullName') || value('fullname'),
+          phone: value('phone') || value('mobile') || value('contact'),
+          service: value('service') || value('serviceType'),
+          preferred_date: value('date') || value('preferred_date') || null,
+          location: value('location') || 'Perambur, Chennai',
+          message: value('message') || value('requirement') || value('details')
         };
-        if (!payload.p_name || !payload.p_phone || !payload.p_service) return;
-        showStats(await api('submit_enquiry', payload));
-      } catch (error) { console.warn('FixTechBro enquiry analytics:', error.message); }
+        if (!payload.name || !payload.phone || !payload.service) return;
+        const response = await fetch('/api/send-enquiry', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          keepalive: true
+        });
+        if (!response.ok) throw new Error(`Enquiry endpoint failed: ${response.status}`);
+        const result = await response.json();
+        showStats(result.stats);
+      } catch (error) { console.warn('FixTechBro enquiry email:', error.message); }
     });
   };
 
